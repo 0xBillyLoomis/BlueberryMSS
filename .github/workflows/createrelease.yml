@@ -16,3 +16,6 @@ jobs:
       with:
         artifacts: "BlueberryMSS.zip"
         token: ${{ secrets.GITHUB_TOKEN }}  
+        tag: "release"
+        generateReleaseNotes: true
+        makeLatest: true
