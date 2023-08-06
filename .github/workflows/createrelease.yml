@@ -5,9 +5,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-    - name: Archive Release
+    - name: Zip Release
       uses: thedoctor0/zip-release@0.7.1
       with:
         type: 'zip'
         filename: 'BlueberryMSS.zip'
         exclusions: '*.git*'
+    - name: Upload Release
+      uses: ncipollo/release-action@v1.12.0
+      with:
+        artifacts: "BlueberryMSS.zip"
+        token: ${{ secrets.GITHUB_TOKEN }}  
