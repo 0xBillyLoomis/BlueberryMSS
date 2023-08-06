@@ -3,7 +3,7 @@ import zipfile
 import os
 import toml
 import subprocess
-from shutil import copy2, rmtree
+from shutil import copy2, copytree, rmtree
 import time
 
 # Constants
@@ -13,13 +13,6 @@ ZIP_URL = os.path.join(BASE_URL, 'FASF-Server.zip')
 VERSION_FILE = 'previous_version.txt'
 DESTINATION_FOLDER = os.path.dirname(os.path.abspath(__file__))  # Same directory as the script
 SCREEN_NAME = 'minecraft_server'  # Name of the screen session
-
-# Function to remove old versions of mod files
-def remove_old_versions(new_file_name, destination_folder):
-    mod_name = new_file_name.split('-')[0]  # Assuming the name is before the version
-    for file_name in os.listdir(destination_folder):
-        if file_name.startswith(mod_name) and file_name != new_file_name:
-            os.remove(os.path.join(destination_folder, file_name))
 
 # Function to start Minecraft server in a screen
 def start_minecraft_server():
@@ -61,28 +54,29 @@ while True:
         send_command_to_screen('stop')
         time.sleep(10)  # Wait for stop to complete, adjust as needed
 
-        # Download the ZIP file
+        # Download and extract the ZIP file
         response = requests.get(ZIP_URL)
         zip_path = 'FASF-Server.zip'
         with open(zip_path, 'wb') as file:
             file.write(response.content)
-
-        # Extract the ZIP file
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall('temp_folder')
 
-        # Replace files and remove old versions
-        for root, dirs, files in os.walk('temp_folder'):
-            for file_name in files:
-                temp_file_path = os.path.join(root, file_name)
-                dest_file_path = os.path.join(DESTINATION_FOLDER, os.path.relpath(temp_file_path, 'temp_folder'))
+        # Remove old mods folder and replace with the new one
+        rmtree(os.path.join(DESTINATION_FOLDER, 'mods'), ignore_errors=True)
+        copytree(os.path.join('temp_folder', 'mods'), os.path.join(DESTINATION_FOLDER, 'mods'))
 
-                # Remove old versions of the mod file
-                remove_old_versions(file_name, os.path.dirname(dest_file_path))
-
-                # Copy new file
-                os.makedirs(os.path.dirname(dest_file_path), exist_ok=True)
-                copy2(temp_file_path, dest_file_path)
+        # For config and defaultconfigs, only copy files if they don't already exist in the destination
+        for folder_name in ['config', 'defaultconfigs']:
+            src_folder = os.path.join('temp_folder', folder_name)
+            dest_folder = os.path.join(DESTINATION_FOLDER, folder_name)
+            for root, dirs, files in os.walk(src_folder):
+                for file_name in files:
+                    src_file_path = os.path.join(root, file_name)
+                    dest_file_path = os.path.join(dest_folder, os.path.relpath(src_file_path, src_folder))
+                    if not os.path.exists(dest_file_path):
+                        os.makedirs(os.path.dirname(dest_file_path), exist_ok=True)
+                        copy2(src_file_path, dest_file_path, follow_symlinks=True)
 
         # Remove the temporary folder and ZIP file
         rmtree('temp_folder')
